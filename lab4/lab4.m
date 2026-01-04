@@ -1,0 +1,395 @@
+%% LAB 4
+% Team Members: Hannah Lila (1008374251), Tanya Rustogi (1007828665),
+% Caroline Wang (1008050485)
+
+%% 3.0 Lab Preparation
+clear
+clc
+
+% Init robot
+DH = [0, 400, 25, pi/2; 
+      0, 0, 315, 0; 
+      0, 0, 35, pi/2; 
+      0, 365, 0, -pi/2; 
+      0, 0, 0, pi/2; 
+      0, 161.44, -156, 0];
+
+DH_forces = [[0, 400, 25, pi/2]; 
+             [0, 0, 315, 0]; 
+             [0, 0, 35, pi/2]; 
+             [0, 365, 0, -pi/2]; 
+             [0, 0, 0, pi/2]; 
+             [0, 161.44, 0, 0]];
+
+myrobot = mykuka(DH_forces);
+%myrobot_force = mykuka(DH_forces);
+
+setupobstacle_lab4prep;
+tau = rep([pi/10,pi/12,pi/6,pi/2,pi/2,-pi/6], myrobot, prepobs{1})
+
+% Init robot
+DH = [0, 400, 25, pi/2; 
+      0, 0, 315, 0; 
+      0, 0, 35, pi/2; 
+      0, 365, 0, -pi/2; 
+      0, 0, 0, pi/2; 
+      0, 161.44, -156, 0];
+
+DH_forces = [[0, 400, 25, pi/2]; 
+             [0, 0, 315, 0]; 
+             [0, 0, 35, pi/2]; 
+             [0, 365, 0, -pi/2]; 
+             [0, 0, 0, pi/2]; 
+             [0, 161.44, 0, 0]];
+
+kuka = mykuka(DH);
+kuka_forces = mykuka(DH_forces);
+
+P1 = [620 375 50];
+P2 = [620 -375 50];
+
+setupobstacle_lab4prep;
+
+R = [0 0 1;0 -1 0;1 0 0];
+H1 = [R P1'; zeros(1,3) 1];
+H2 = [R P2'; zeros(1,3) 1];
+q1 = inverse_kuka(H1, kuka);
+q2 = inverse_kuka(H2, kuka);
+%qref = motionplan(q1, q2, 0, 10, kuka_forces, prepobs, 0.01);
+
+% Plotting the KUKA robot with the obstacles
+hold on;
+axis([-200 800 -600 600 0 1000]);
+plotobstacle(prepobs)
+qref = motionplan(q1, q2, 0, 10, kuka_forces, prepobs, 0.01)
+t = linspace(0,10,300)
+q = ppval(qref, t)'
+plot(myrobot, q)
+hold off;
+
+%% 4.1 Motion Planning in Simulation
+clearvars -except udpObj
+
+% Init robot
+DH = [0, 400, 25, pi/2; 
+      0, 0, 315, 0; 
+      0, 0, 35, pi/2; 
+      0, 365, 0, -pi/2; 
+      0, 0, 0, pi/2; 
+      0, 161.44, -156, 0];
+
+DH_forces = [[0, 400, 25, pi/2]; 
+             [0, 0, 315, 0]; 
+             [0, 0, 35, pi/2]; 
+             [0, 365, 0, -pi/2]; 
+             [0, 0, 0, pi/2]; 
+             [0, 161.44, 0, 0]];
+
+kuka = mykuka(DH);
+kuka_forces = mykuka(DH_forces);
+
+% Set up our target coordinates
+z_grid = 45;
+p0 = [370 -440 150];
+p1 = [370 -440 z_grid];
+p2 = [750 -220 225];
+p3 = [620 350 225];
+
+% Getting the homogeneous transformation matrices
+R = [0 0 1;0 -1 0;1 0 0];
+H0 = [R p0'; zeros(1,3) 1];
+H1 = [R p1'; zeros(1,3) 1];
+H2 = [R p2'; zeros(1,3) 1];
+H3 = [R p3'; zeros(1,3) 1];
+
+% Finding joint angles
+q0 = inverse_kuka(H0, kuka);
+q1 = inverse_kuka(H1, kuka);
+q2 = inverse_kuka(H2, kuka);
+q3 = inverse_kuka(H3, kuka);
+
+setupobstacle;
+
+hold on;
+axis([-200 800 -600 600 0 1000]);
+plotobstacle(obs);
+
+% Getting the joint angle trajectory 
+qref1 = motionplan(q0, q1, 0, 10, kuka_forces, obs, 0.01);
+qref2 = motionplan(q1, q2, 0, 10, kuka_forces, obs, 0.01);
+qref3 = motionplan(q2, q3, 0, 10, kuka_forces, obs, 0.01);
+
+t = linspace(0,10,300)
+
+q_mat1 = ppval(qref1, t)'
+q_mat2 = ppval(qref2, t)';
+q_mat3 = ppval(qref3, t)';
+
+% Handling Joint 6
+q_mat1(:, 6) = linspace(q0(1,6), q1(1,6), 300);
+q_mat2(:, 6) = linspace(q1(1,6), q2(1,6), 300);
+q_mat3(:, 6) = linspace(q2(1,6), q3(1,6), 300);
+
+q = [q_mat1; q_mat2; q_mat3];
+
+% Plot the robot
+plot(kuka_forces, q);
+hold off;
+
+%% 4.2 Initial Motion Planning with KUKA
+clearvars -except udpObj
+
+% Init robot
+DH = [0, 400, 25, pi/2; 
+      0, 0, 315, 0; 
+      0, 0, 35, pi/2; 
+      0, 365, 0, -pi/2; 
+      0, 0, 0, pi/2; 
+      0, 161.44, -156, 0];
+
+DH_forces = [[0, 400, 25, pi/2]; 
+             [0, 0, 315, 0]; 
+             [0, 0, 35, pi/2]; 
+             [0, 365, 0, -pi/2]; 
+             [0, 0, 0, pi/2]; 
+             [0, 161.44, 0, 0]];
+
+kuka = mykuka(DH);
+kuka_forces = mykuka(DH_forces);
+
+z_grid = 45;
+p0 = [370 -440 85]
+p1 = [370 -440 z_grid];
+p2 = [750 -220 225];
+p3 = [620 350 225];
+
+% Getting the homogeneous transformation matrices
+R = [0 0 1;0 -1 0;1 0 0];
+H0 = [R p0'; zeros(1,3) 1];
+H1 = [R p1'; zeros(1,3) 1];
+H2 = [R p2'; zeros(1,3) 1];
+H3 = [R p3'; zeros(1,3) 1];
+
+%home pos
+q_home = [0 1.5708 0 0 1.5708 0];
+
+% Finding joint angles
+q0 = inverse_kuka(H0, kuka);
+q1 = inverse_kuka(H1, kuka);
+q2 = inverse_kuka(H2, kuka);
+q3 = inverse_kuka(H3, kuka);
+
+% getting the joint angle trajectory using motionplan
+setupobstacle;
+q_curr = getAngles()
+
+%qrefhome = motionplan(q_curr, q_home, 0, 10, kuka_forces, obs, 0.01);
+qref0 = motionplan(q_curr, q0, 0, 10, kuka_forces, obs, 0.01);
+qref1 = motionplan(q0, q1, 0, 10, kuka_forces, obs, 0.01);
+qref2 = motionplan(q1, q2, 0, 10, kuka_forces, obs, 0.01);
+qref3 = motionplan(q2, q3, 0, 10, kuka_forces, obs, 0.01);
+
+t = linspace(0,10,300)
+
+%q_mathome = ppval(qrefhome, t)';
+q_mat0 = ppval(qref0, t)';
+q_mat1 = ppval(qref1, t)'
+q_mat2 = ppval(qref2, t)';
+q_mat3 = ppval(qref3, t)';
+
+q_mat0(:, 6) = linspace(q_curr(1,6), q0(1,6), 300);
+q_mat1(:, 6) = linspace(q0(1,6), q1(1,6), 300);
+q_mat2(:, 6) = linspace(q1(1,6), q2(1,6), 300);
+q_mat3(:, 6) = linspace(q2(1,6), q3(1,6), 300);
+
+% setting the angles on the KUKA robot to match our trajectory
+
+for i = 1:300
+    setAngles(q_mat0(i, :), 0.04);
+end
+
+setGripper(0);
+
+for i = 1:300
+    setAngles(q_mat1(i, :), 0.04);
+end
+
+setGripper(1);
+
+for i = 1:300
+    setAngles(q_mat2(i, :), 0.04);
+end
+
+for i = 1:300
+    setAngles(q_mat3(i, :), 0.04);
+end
+
+setGripper(0);
+
+%% 4.3 Creative Motion Planning with KUKA
+clearvars -except udpObj
+
+% Init robot
+DH = [0, 400, 25, pi/2; 
+      0, 0, 315, 0; 
+      0, 0, 35, pi/2; 
+      0, 365, 0, -pi/2; 
+      0, 0, 0, pi/2; 
+      0, 161.44, -156, 0];
+
+DH_forces = [[0, 400, 25, pi/2]; 
+             [0, 0, 315, 0]; 
+             [0, 0, 35, pi/2]; 
+             [0, 365, 0, -pi/2]; 
+             [0, 0, 0, pi/2]; 
+             [0, 161.44, 0, 0]];
+
+kuka = mykuka(DH);
+kuka_forces = mykuka(DH_forces);
+
+% For creative we are picking up two blocks (one at a time) and 
+% stacking them on top of each other
+z_grid = 45;
+
+% The first cube
+p0 = [370 -440 85]
+p1 = [370 -440 z_grid];
+
+% Final dest of first cube
+p2 = [750 -220 225];
+p_temp = [620 350 225];
+p3 = [620 350 z_grid + 30 + 100];
+
+% The second cube
+p4 = [370 -290 85]
+p5 = [370 -290 z_grid];
+
+% Final dest of second cube
+p6 = [750 -220 225];
+p7 = [620 350 (z_grid + 30 + 100)];
+p8 = [620 350 150];
+
+% Getting the homogeneous transformation matrices
+R = [0 0 1;0 -1 0;1 0 0];
+H0 = [R p0'; zeros(1,3) 1];
+H1 = [R p1'; zeros(1,3) 1];
+H2 = [R p2'; zeros(1,3) 1];
+H_temp = [R p_temp'; zeros(1,3) 1];
+H3 = [R p3'; zeros(1,3) 1];
+H4 = [R p4'; zeros(1,3) 1];
+H5 = [R p5'; zeros(1,3) 1];
+H6 = [R p6'; zeros(1,3) 1];
+H7 = [R p7'; zeros(1,3) 1];
+H8 = [R p8'; zeros(1,3) 1];
+
+% home pos
+q_home = [0 1.5708 0 0 1.5708 0];
+
+% Finding joint angles
+q0 = inverse_kuka(H0, kuka);
+q1 = inverse_kuka(H1, kuka);
+q2 = inverse_kuka(H2, kuka);
+q_temp = inverse_kuka(H_temp, kuka);
+q3 = inverse_kuka(H3, kuka);
+q4 = inverse_kuka(H4, kuka);
+q5 = inverse_kuka(H5, kuka);
+q6 = inverse_kuka(H6, kuka);
+q7 = inverse_kuka(H7, kuka);
+q8 = inverse_kuka(H8, kuka);
+
+% getting the joint angle trajectory 
+setupobstacle;
+q_curr = getAngles()
+
+%qrefhome = motionplan(q_curr, q_home, 0, 10, kuka_forces, obs, 0.01);
+qref0 = motionplan(q_curr, q0, 0, 10, kuka_forces, obs, 0.01);
+qref1 = motionplan(q0, q1, 0, 10, kuka_forces, obs, 0.01);
+qref2 = motionplan(q1, q2, 0, 10, kuka_forces, obs, 0.01);
+qref_temp = motionplan(q2, q_temp, 0, 10, kuka_forces, obs, 0.01);
+qref3 = motionplan(q_temp, q3, 0, 10, kuka_forces, obs, 0.01);
+qref4 = motionplan(q3, q4, 0, 10, kuka_forces, obs, 0.01);
+qref5 = motionplan(q4, q5, 0, 10, kuka_forces, obs, 0.01);
+qref6 = motionplan(q5, q6, 0, 10, kuka_forces, obs, 0.01);
+qref7 = motionplan(q6, q7, 0, 10, kuka_forces, obs, 0.01);
+qref8 = motionplan(q7, q8, 0, 10, kuka_forces, obs, 0.01);
+
+t = linspace(0,10,300)
+
+%q_mathome = ppval(qrefhome, t)';
+q_mat0 = ppval(qref0, t)';
+q_mat1 = ppval(qref1, t)'
+q_mat2 = ppval(qref2, t)';
+q_mattemp = ppval(qref_temp, t)';
+q_mat3 = ppval(qref3, t)';
+q_mat4 = ppval(qref4, t)';
+q_mat5 = ppval(qref5, t)';
+q_mat6 = ppval(qref6, t)'
+q_mat7 = ppval(qref7, t)';
+q_mat8 = ppval(qref8, t)';
+
+q_mat0(:, 6) = linspace(q_curr(1,6), q0(1,6), 300);
+q_mat1(:, 6) = linspace(q0(1,6), q1(1,6), 300);
+q_mat2(:, 6) = linspace(q1(1,6), q2(1,6), 300);
+q_mattemp(:, 6) = linspace(q2(1,6), q_temp(1,6), 300);
+q_mat3(:, 6) = linspace(q_temp(1,6), q3(1,6), 300);
+q_mat4(:, 6) = linspace(q3(1,6), q4(1,6), 300);
+q_mat5(:, 6) = linspace(q4(1,6), q5(1,6), 300);
+q_mat6(:, 6) = linspace(q5(1,6), q6(1,6), 300);
+q_mat7(:, 6) = linspace(q6(1,6), q7(1,6), 300);
+q_mat7(:, 6) = linspace(q7(1,6), q8(1,6), 300);
+
+% Sending the robot to the specified positions
+setGripper(0);
+
+for i = 1:300
+    setAngles(q_mat0(i, :), 0.04);
+end
+
+
+for i = 1:300
+    setAngles(q_mat1(i, :), 0.04);
+end
+
+% Pick up object 1
+setGripper(1);
+
+for i = 1:300
+    setAngles(q_mat2(i, :), 0.04);
+end
+
+for i = 1:300
+    setAngles(q_mattemp(i, :), 0.04);
+end
+
+for i = 1:300
+    setAngles(q_mat3(i, :), 0.04);
+end
+
+% Drop object 1
+setGripper(0);
+
+for i = 1:300
+    setAngles(q_mat4(i, :), 0.04);
+end
+
+for i = 1:300
+    setAngles(q_mat5(i, :), 0.04);
+end
+
+% Pick up object 2
+setGripper(1);
+
+for i = 1:300
+    setAngles(q_mat6(i, :), 0.04);
+end
+
+for i = 1:300
+    setAngles(q_mat7(i, :), 0.04);
+end
+
+% Drop object 2
+setGripper(0);
+
+for i = 1:300
+    setAngles(q_mat8(i, :), 0.04);
+end
